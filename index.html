@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#064e3b">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Sleek Reversi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- MENU SCREEN -->
+        <div id="menu-screen" class="screen active">
+            <h1 class="logo">REVERSI<span>PRO</span></h1>
+            
+            <div class="menu-card">
+                <h2>Bota Karşı Oyna</h2>
+                <div class="modes">
+                    <button class="btn btn-primary" onclick="startGame('bot', 'easy')">Kolay</button>
+                    <button class="btn btn-primary" onclick="startGame('bot', 'medium')">Orta</button>
+                    <button class="btn btn-primary" onclick="startGame('bot', 'hard')">Zor</button>
+                </div>
+            </div>
+
+            <div class="menu-card">
+                <h2>Arkadaşınla Oyna</h2>
+                <div class="modes">
+                    <button class="btn btn-secondary" onclick="startGame('friend')">Oda Kur</button>
+                    <button class="btn btn-primary" onclick="showJoinMenu()">Odaya Katıl</button>
+                </div>
+                <div id="join-section" style="display:none; margin-top:16px;">
+                    <input type="text" id="room-input" class="input-field" placeholder="Oda ID'si girin...">
+                    <button class="btn btn-secondary" style="width:100%;" onclick="joinRoom()">Katıl</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="game-screen" class="screen">
+            <div class="header">
+                <button class="btn-icon-text" onclick="leaveGame()">Odadan Çık</button>
+                <div class="room-badge" id="room-info-display">Oda: -</div>
+            </div>
+
+            <div id="toast-message" class="toast-msg toast-hidden"></div>
+
+            <div class="score-board">
+                <div class="player-card" id="card-black">
+                    <div class="avatar avatar-black"></div>
+                    <div class="name">Siyah</div>
+                    <div class="score" id="score-black">2</div>
+                </div>
+                
+                <div class="player-card" id="card-white">
+                    <div class="avatar avatar-white"></div>
+                    <div class="name">Beyaz</div>
+                    <div class="score" id="score-white">2</div>
+                </div>
+            </div>
+
+            <div class="board-container">
+                <div id="board" class="board">
+                    <!-- JS populate -->
+                </div>
+
+                <!-- OVERLAYS (Game Over / Waiting) -->
+                <div id="board-overlay" class="overlay" style="display:none;">
+                    <div class="modal-card">
+                        <h2 id="modal-title" class="modal-title">Rakip Bekleniyor...</h2>
+                        <p id="modal-desc" class="modal-desc">Arkadaşının girmesi gereken oda kodu:</p>
+                        
+                        <div id="room-code-box" class="room-code-box" style="display:none;" onclick="copyRoomCode()">
+                            <span id="room-code-text">7068</span>
+                            <div class="copy-hint">Kopyalamak için tıkla</div>
+                        </div>
+
+                        <button class="btn btn-secondary" style="width:100%; display:none" id="modal-btn" onclick="leaveGame()">Menüye Dön</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Global App Modal (Errors etc) -->
+    <div id="global-overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:100;">
+        <div class="modal-card">
+            <h2 id="global-modal-title" class="modal-title">Durum</h2>
+            <p id="global-modal-desc" class="modal-desc"></p>
+            <button class="btn btn-primary" onclick="document.getElementById('global-overlay').style.display='none'">Tamam</button>
+        </div>
+    </div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Hata:', err));
+            });
+        }
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
