@@ -25,6 +25,10 @@ foreach ($files as $file) {
                 if ($state['status'] === 'finished' && ($now - $state['last_activity']) > 60) {
                     unlink($file);
                 }
+                // Terk edilen oyunları 1 saat (3600 saniye) sonra sil
+                if ($state['status'] === 'playing' && isset($state['last_activity']) && ($now - $state['last_activity']) > 3600) {
+                    unlink($file);
+                }
             }
         }
     }
