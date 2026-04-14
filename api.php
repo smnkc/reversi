@@ -46,14 +46,23 @@ function readState($roomId) {
     global $dataDir;
     $file = $dataDir . '/' . $roomId . '.json';
     if (!file_exists($file)) return null;
-    return json_decode(file_get_contents($file), true);
+    
+    for ($i = 0; $i < 3; $i++) {
+        $content = file_get_contents($file);
+        if ($content) {
+            $state = json_decode($content, true);
+            if (is_array($state)) return $state;
+        }
+        usleep(50000);
+    }
+    return null;
 }
 
 function writeState($roomId, $state) {
     global $dataDir;
     $state['last_activity'] = time();
     $file = $dataDir . '/' . $roomId . '.json';
-    file_put_contents($file, json_encode($state));
+    file_put_contents($file, json_encode($state), LOCK_EX);
 }
 
 function outputState($state) {

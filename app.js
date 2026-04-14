@@ -86,12 +86,12 @@ async function apiCall(action, params = {}) {
         const data = await res.json();
         if (data.error) {
             console.error(data.error);
-            return null;
+            return data;
         }
         return data;
     } catch (e) {
         console.error(e);
-        return null;
+        return { fetchError: true };
     }
 }
 
@@ -111,12 +111,12 @@ async function apiPost(action, body, params = {}) {
         const data = await res.json();
         if (data.error) {
             console.error(data.error);
-            return null;
+            return data;
         }
         return data;
     } catch(e) {
         console.error(e);
-        return null;
+        return { fetchError: true };
     }
 }
 
@@ -128,6 +128,7 @@ async function startGame(type, difficulty = 'easy') {
         isBotMode = true;
         botDifficulty = difficulty;
         currentRoomId = null; 
+        localStorage.removeItem('roomId');
         
         let initialBoard = Array(8).fill(0).map(() => Array(8).fill(0));
         initialBoard[3][3] = 2;
@@ -153,7 +154,7 @@ async function startGame(type, difficulty = 'easy') {
 
     const data = await apiCall('create_room', { type, difficulty });
     isRequesting = false;
-    if (data) {
+    if (data && !data.error && !data.fetchError) {
         currentRoomId = data.room_id;
         localStorage.setItem('roomId', currentRoomId);
         enterGameLogic(data);
@@ -170,7 +171,7 @@ async function joinRoom() {
     currentRoomId = roomId; 
     const data = await apiCall('join_room');
     isRequesting = false;
-    if (data) {
+    if (data && !data.error && !data.fetchError) {
         localStorage.setItem('roomId', currentRoomId);
         enterGameLogic(data);
     } else {
@@ -202,7 +203,7 @@ async function makeMove(r, c) {
     } else {
         const data = await apiCall('move', { row: r, col: c });
         isRequesting = false;
-        if (data) {
+        if (data && !data.error && !data.fetchError) {
             updateBoard(data);
         }
     }
@@ -221,7 +222,7 @@ async function triggerBotLoops(state) {
             difficulty: botDifficulty
         });
         
-        if (botData) {
+        if (botData && !botData.error && !botData.fetchError) {
             updateBoard(botData);
             if (botData.status === 'playing' && botData.turn === WHITE) {
                 triggerBotLoops(botData);
@@ -237,9 +238,9 @@ async function triggerBotLoops(state) {
 async function pollState() {
     if (!currentRoomId || isRequesting) return;
     const data = await apiCall('get_state');
-    if (data) {
+    if (data && !data.error && !data.fetchError) {
         updateBoard(data);
-    } else {
+    } else if (data && data.error === "Room not found") {
         leaveGame(true);
         showGlobalModal("Oda Bulunamadı", "Bu oyun süresi dolduğu için veya kapandığı için silinmiş.");
     }
@@ -252,6 +253,7 @@ function leaveGame(silent = false) {
     currentRoomId = null;
     isBotMode = false;
     localStorage.removeItem('roomId');
+    localStorage.removeItem('botState');
     if (pollInterval) clearInterval(pollInterval);
     showScreen('menu-screen');
     boardOverlay.style.display = 'none';
@@ -299,6 +301,13 @@ function updateBoard(state) {
     const oldState = currentGameState;
     // merge to keep meta information
     currentGameState = { ...currentGameState, ...state };
+    
+    if (isBotMode) {
+        localStorage.setItem('botState', JSON.stringify({
+            difficulty: botDifficulty,
+            state: currentGameState
+        }));
+    }
     
     roomInfoEl.innerText = isBotMode ? "Mod: Bot" : `Oda: ${currentGameState.room_id}`;
     
@@ -389,11 +398,29 @@ function updateBoard(state) {
 
 // Auto init
 async function init() {
+    let botSaved = localStorage.getItem('botState');
+    if (botSaved) {
+        try {
+            let parsed = JSON.parse(botSaved);
+            isBotMode = true;
+            botDifficulty = parsed.difficulty;
+            document.getElementById('menu-screen').classList.remove('active');
+            enterGameLogic(parsed.state);
+            // Eğer botun sırasıysa onu tetiğini uyaralım
+            if (parsed.state.status === 'playing' && parsed.state.turn === 2 /* WHITE */) {
+                triggerBotLoops(parsed.state);
+            }
+            return;
+        } catch(e) {
+            localStorage.removeItem('botState');
+        }
+    }
+
     if (currentRoomId) {
         const data = await apiCall('get_state');
-        if (data) {
+        if (data && !data.error && !data.fetchError) {
             enterGameLogic(data);
-        } else {
+        } else if (data && data.error === "Room not found") {
             leaveGame(true);
         }
     }
