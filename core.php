@@ -51,7 +51,31 @@ class Reversi {
     }
 
     public static function isValidMove($board, $player, $row, $col) {
-        return count(self::getFlippedPieces($board, $player, $row, $col)) > 0;
+        if ($board[$row][$col] !== self::EMPTY) return false;
+        
+        $opponent = self::getOpponent($player);
+        $directions = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+
+        foreach ($directions as $dir) {
+            $r = $row + $dir[0];
+            $c = $col + $dir[1];
+            $foundOpponent = false;
+
+            while ($r >= 0 && $r < 8 && $c >= 0 && $c < 8 && $board[$r][$c] === $opponent) {
+                $r += $dir[0];
+                $c += $dir[1];
+                $foundOpponent = true;
+            }
+
+            if ($foundOpponent && $r >= 0 && $r < 8 && $c >= 0 && $c < 8 && $board[$r][$c] === $player) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function getValidMoves($board, $player) {
@@ -132,7 +156,7 @@ class Bot {
         [100, -20,  10,   5,   5,  10, -20, 100]
     ];
 
-    public static function moveHard($board, $player) {
+    public static function moveHard($board, $player, $depth = 4) {
         $moves = Reversi::getValidMoves($board, $player);
         if (empty($moves)) return null;
 
@@ -141,7 +165,7 @@ class Bot {
 
         foreach ($moves as $move) {
             $newBoard = Reversi::applyMove($board, $player, $move[0], $move[1]);
-            $score = self::minimax($newBoard, 4, false, -999999, 999999, Reversi::getOpponent($player), $player);
+            $score = self::minimax($newBoard, $depth, false, -999999, 999999, Reversi::getOpponent($player), $player);
             if ($score > $bestScore) {
                 $bestScore = $score;
                 $bestMove = $move;
@@ -161,6 +185,11 @@ class Bot {
         if (empty($moves)) {
             return self::minimax($board, $depth - 1, !$isMaximizing, $alpha, $beta, Reversi::getOpponent($currentPlayer), $maximizingPlayer);
         }
+
+        // Move Ordering: Sort moves based on positional weights to prune faster
+        usort($moves, function($a, $b) {
+            return self::$weights[$b[0]][$b[1]] - self::$weights[$a[0]][$a[1]];
+        });
 
         if ($isMaximizing) {
             $maxEval = -999999;
@@ -186,17 +215,58 @@ class Bot {
     }
 
     private static function evaluateBoard($board, $player) {
-        $score = 0;
+        $counts = Reversi::getCounts($board);
+        $totalPieces = $counts['black'] + $counts['white'];
         $opponent = Reversi::getOpponent($player);
+
+        // 1. End Game Logic: If reached end-game, maximize piece count
+        if ($totalPieces > 50) {
+            $myCount = ($player === Reversi::BLACK) ? $counts['black'] : $counts['white'];
+            $opCount = ($player === Reversi::BLACK) ? $counts['white'] : $counts['black'];
+            return ($myCount - $opCount) * 100;
+        }
+
+        $score = 0;
+        
+        // 2. Strategic Positional Weights
         for ($r = 0; $r < 8; $r++) {
             for ($c = 0; $c < 8; $c++) {
                 if ($board[$r][$c] === $player) {
-                    $score += self::$weights[$r][$c];
+                    $val = self::$weights[$r][$c];
+                    // Dynamic: If corner is taken, adjacent squares are no longer dangerous
+                    $score += $val;
                 } elseif ($board[$r][$c] === $opponent) {
                     $score -= self::$weights[$r][$c];
                 }
             }
         }
+        
+        // 3. Mobility (Available moves) - Critical for mid-game
+        $playerMoves = count(Reversi::getValidMoves($board, $player));
+        $opponentMoves = count(Reversi::getValidMoves($board, $opponent));
+        $score += ($playerMoves - $opponentMoves) * 15;
+
+        // 4. Corner Proximity: Extra penalty for C-squares and X-squares if corner is EMPTY
+        $corners = [[0,0], [0,7], [7,0], [7,7]];
+        $adjacents = [
+            "0,0" => [[0,1], [1,0], [1,1]],
+            "0,7" => [[0,6], [1,7], [1,6]],
+            "7,0" => [[7,1], [6,0], [6,1]],
+            "7,7" => [[7,6], [6,7], [6,6]]
+        ];
+
+        foreach ($adjacents as $cornerKey => $adjList) {
+            $coords = explode(',', $cornerKey);
+            $cr = (int)$coords[0];
+            $cc = (int)$coords[1];
+            if ($board[$cr][$cc] === Reversi::EMPTY) {
+                foreach ($adjList as $adj) {
+                    if ($board[$adj[0]][$adj[1]] === $player) $score -= 40;
+                    elseif ($board[$adj[0]][$adj[1]] === $opponent) $score += 40;
+                }
+            }
+        }
+        
         return $score;
     }
 }

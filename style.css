@@ -160,7 +160,22 @@ body::before {
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
+    transition: all 0.3s ease;
 }
+
+.hint-btn {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--amber-500);
+    display: none;
+}
+
+.hint-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
 .room-badge {
     background: var(--slate-900);
     border: 1px solid var(--slate-800);
@@ -271,6 +286,25 @@ body::before {
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.2);
     animation: scaleIn 0.3s ease forwards;
+}
+
+/* HINT MOVE (Amber dot) */
+.cell.hint-move::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--amber-500);
+    box-shadow: 0 0 15px var(--amber-500);
+    animation: hintPulse 1s infinite;
+    z-index: 5;
+}
+
+@keyframes hintPulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.6; }
 }
 
 @keyframes scaleIn {

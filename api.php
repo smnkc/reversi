@@ -271,4 +271,17 @@ if ($action === 'stateless_bot_move') {
     exit;
 }
 
+if ($action === 'stateless_hint') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!$input) sendError("Invalid JSON");
+    $board = $input['board'];
+    $player = $input['player'] ?? Reversi::BLACK;
+    
+    // Hint depth is 5, while hard bot is 4. This ensures hint is superior and fast enough.
+    $hintMove = Bot::moveHard($board, $player, 5);
+    
+    echo json_encode(['hint' => $hintMove]);
+    exit;
+}
+
 sendError("Invalid action");

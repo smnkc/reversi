@@ -180,9 +180,44 @@ async function joinRoom() {
     }
 }
 
+async function getHint() {
+    if (!isMyTurn || isRequesting) return;
+    
+    const hintBtn = document.getElementById('hint-btn');
+    const originalText = hintBtn.innerText;
+    hintBtn.innerText = "Düşünüyor...";
+    hintBtn.disabled = true;
+
+    // Clear previous hint if any
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('hint-move'));
+
+    isRequesting = true;
+    const data = await apiPost('stateless_hint', {
+        board: currentGameState.board,
+        player: myColor
+    });
+    isRequesting = false;
+    
+    hintBtn.innerText = originalText;
+    hintBtn.disabled = false;
+
+    if (data && data.hint) {
+        const [r, c] = data.hint;
+        const index = r * 8 + c;
+        const cell = boardEl.children[index];
+        cell.classList.add('hint-move');
+        showToast("En iyi hamle işaretlendi!");
+    } else {
+        showToast("Uygun hamle bulunamadı.");
+    }
+}
+
 async function makeMove(r, c) {
     if (!isMyTurn || isRequesting) return;
     isRequesting = true;
+
+    // Remove hint when making a move
+    document.querySelectorAll('.cell').forEach(cl => cl.classList.remove('hint-move'));
 
     if (isBotMode) {
         const p1Data = await apiPost('stateless_move', {
@@ -320,6 +355,12 @@ function updateBoard(state) {
     }
 
     isMyTurn = (currentGameState.turn === myColor && currentGameState.status === 'playing');
+
+    // Hint button visibility
+    const hintBtn = document.getElementById('hint-btn');
+    if (hintBtn) {
+        hintBtn.style.display = (isBotMode && isMyTurn) ? 'block' : 'none';
+    }
 
     let bCount = 0, wCount = 0;
 
